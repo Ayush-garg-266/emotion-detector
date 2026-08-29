@@ -71,6 +71,20 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 face_cascade = None
 face_cascade_alt = None
 
+def load_cascade(filename):
+    paths = [
+        os.path.join(BASE_DIR, filename),
+        getattr(cv2.data, 'haarcascades', '') + filename
+    ]
+    for p in paths:
+        if p and os.path.exists(p):
+            c = cv2.CascadeClassifier(p)
+            if not c.empty():
+                print(f"Loaded cascade XML from {p}", flush=True)
+                return c
+    print(f"Warning: Could not load cascade XML '{filename}'", flush=True)
+    return None
+
 def init_resources():
     global model, face_cascade, face_cascade_alt
     weights_path = os.path.join(BASE_DIR, 'top_models', 'fer.h5')
@@ -82,16 +96,8 @@ def init_resources():
     else:
         print(f"Error: Weights file not found at '{weights_path}'!", flush=True)
 
-    cascade_path = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
-    if os.path.exists(cascade_path):
-        face_cascade = cv2.CascadeClassifier(cascade_path)
-        print("Primary face cascade loaded successfully!", flush=True)
-
-    # Load secondary cascade for improved multi-angle/tilted face detection
-    alt_path = getattr(cv2.data, 'haarcascades', '') + 'haarcascade_frontalface_alt2.xml'
-    if os.path.exists(alt_path):
-        face_cascade_alt = cv2.CascadeClassifier(alt_path)
-        print("Secondary face cascade loaded successfully!", flush=True)
+    face_cascade = load_cascade('haarcascade_frontalface_default.xml')
+    face_cascade_alt = load_cascade('haarcascade_frontalface_alt2.xml')
 
 # Initialize resources automatically on module import (required for Gunicorn/Render)
 init_resources()
@@ -539,10 +545,19 @@ HTML_TEMPLATE = """
         window.addEventListener('beforeunload', stopCamera);
 
         async function processFrame() {
-            if (isProcessing || video.paused || video.ended || !video.videoWidth) return;
+            if (isProcessing || video.paused || video.ended) return;
             isProcessing = true;
 
-            captureCtx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
+            const w = video.videoWidth || 640;
+            const h = video.videoHeight || 480;
+            if (captureCanvas.width !== w || captureCanvas.height !== h) {
+                captureCanvas.width = w;
+                captureCanvas.height = h;
+                overlayCanvas.width = w;
+                overlayCanvas.height = h;
+            }
+
+            captureCtx.drawImage(video, 0, 0, w, h);
             const dataUrl = captureCanvas.toDataURL('image/jpeg', 0.7);
 
             try {
@@ -553,9 +568,14 @@ HTML_TEMPLATE = """
                 });
 
                 const data = await res.json();
+                if (!res.ok || data.error) {
+                    document.getElementById('facesCount').innerText = "Status: " + (data.error || res.statusText);
+                    return;
+                }
                 drawResults(data);
             } catch (err) {
                 console.error("Prediction error:", err);
+                document.getElementById('facesCount').innerText = "Network error: " + err.message;
             } finally {
                 isProcessing = false;
             }
@@ -611,28 +631,33 @@ def index():
 
 @app.route('/api/predict_frame', methods=['POST'])
 def predict_frame():
-    if model is None or face_cascade is None:
-        return jsonify({"error": "Model or face cascade resources not loaded"}), 500
+    if model is None:
+        return jsonify({"error": "Model resources not loaded"}), 500
 
     req = request.get_json()
-    if not req or 'image' not in req:
+    if not req or 'image' not in req or not req['image']:
         return jsonify({"error": "No image data provided"}), 400
 
-    image_data = req['image'].split(',')[1]
-    image_bytes = base64.b64decode(image_data)
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    try:
+        image_data = req['image'].split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception as e:
+        return jsonify({"error": f"Decoding failed: {str(e)}"}), 400
 
-    if frame is None:
+    if frame is None or frame.size == 0:
         return jsonify({"error": "Invalid frame data"}), 400
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
     # Multi-stage detection using primary and secondary cascades
-    faces_detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
-    if len(faces_detected) == 0 and face_cascade_alt is not None:
+    faces_detected = []
+    if face_cascade is not None and not face_cascade.empty():
+        faces_detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+    if len(faces_detected) == 0 and face_cascade_alt is not None and not face_cascade_alt.empty():
         faces_detected = face_cascade_alt.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
-    if len(faces_detected) == 0:
+    if len(faces_detected) == 0 and face_cascade is not None and not face_cascade.empty():
         faces_detected = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=2, minSize=(20, 20))
 
     faces_res = []
