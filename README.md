@@ -136,7 +136,6 @@ This distinction represents a natural architectural evolution for cloud deployme
 ├── fer.py                                  # Complete training pipeline, data preprocessing & model definition
 ├── requirements.txt                        # Dependencies list
 ├── README.md                               # Project documentation
-├── LICENSE                                 # MIT License
 └── .gitignore                              # Git exclusion rules
 ```
 
