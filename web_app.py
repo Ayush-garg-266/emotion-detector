@@ -57,23 +57,28 @@ def build_fer_model(input_shape=(48, 48, 1), classes=7):
     m.add(Dense(classes, activation='softmax'))
     return m
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 def init_resources():
     global model, face_cascade
-    weights_path = os.path.join('top_models', 'fer.h5')
+    weights_path = os.path.join(BASE_DIR, 'top_models', 'fer.h5')
     if os.path.exists(weights_path):
         print(f"Loading weights from {weights_path}...", flush=True)
         model = build_fer_model()
         model.load_weights(weights_path)
         print("Model initialized successfully!", flush=True)
     else:
-        print(f"Warning: Weights path '{weights_path}' not found!", flush=True)
+        print(f"Error: Weights file not found at '{weights_path}'!", flush=True)
 
-    cascade_path = 'haarcascade_frontalface_default.xml'
+    cascade_path = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
     if os.path.exists(cascade_path):
         face_cascade = cv2.CascadeClassifier(cascade_path)
         print("Face cascade loaded successfully!", flush=True)
     else:
-        print(f"Warning: Cascade path '{cascade_path}' not found!", flush=True)
+        print(f"Error: Cascade XML not found at '{cascade_path}'!", flush=True)
+
+# Initialize resources automatically on module import (required for Gunicorn/Render)
+init_resources()
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -645,7 +650,6 @@ def predict_frame():
     })
 
 if __name__ == '__main__':
-    init_resources()
     port = int(os.environ.get('PORT', 5000))
     print("\n========================================================")
     print("  Facial Emotion Recognition Web Application")
