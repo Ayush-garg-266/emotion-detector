@@ -68,8 +68,11 @@ def build_fer_model(input_shape=(48, 48, 1), classes=7):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+face_cascade = None
+face_cascade_alt = None
+
 def init_resources():
-    global model, face_cascade
+    global model, face_cascade, face_cascade_alt
     weights_path = os.path.join(BASE_DIR, 'top_models', 'fer.h5')
     if os.path.exists(weights_path):
         print(f"Loading weights from {weights_path}...", flush=True)
@@ -82,9 +85,13 @@ def init_resources():
     cascade_path = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
     if os.path.exists(cascade_path):
         face_cascade = cv2.CascadeClassifier(cascade_path)
-        print("Face cascade loaded successfully!", flush=True)
-    else:
-        print(f"Error: Cascade XML not found at '{cascade_path}'!", flush=True)
+        print("Primary face cascade loaded successfully!", flush=True)
+
+    # Load secondary cascade for improved multi-angle/tilted face detection
+    alt_path = getattr(cv2.data, 'haarcascades', '') + 'haarcascade_frontalface_alt2.xml'
+    if os.path.exists(alt_path):
+        face_cascade_alt = cv2.CascadeClassifier(alt_path)
+        print("Secondary face cascade loaded successfully!", flush=True)
 
 # Initialize resources automatically on module import (required for Gunicorn/Render)
 init_resources()
@@ -483,18 +490,27 @@ HTML_TEMPLATE = """
                     video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } 
                 });
                 video.srcObject = mediaStream;
+                await video.play();
+
                 document.getElementById('cameraPrompt').style.display = 'none';
                 document.getElementById('stopControls').style.display = 'flex';
                 document.getElementById('statusText').innerText = 'LIVE STREAMING';
                 
-                video.onloadedmetadata = () => {
-                    overlayCanvas.width = video.videoWidth;
-                    overlayCanvas.height = video.videoHeight;
-                    captureCanvas.width = video.videoWidth;
-                    captureCanvas.height = video.videoHeight;
-                    if (processInterval) clearInterval(processInterval);
-                    processInterval = setInterval(processFrame, 150);
+                const syncDimensions = () => {
+                    const w = video.videoWidth || 640;
+                    const h = video.videoHeight || 480;
+                    overlayCanvas.width = w;
+                    overlayCanvas.height = h;
+                    captureCanvas.width = w;
+                    captureCanvas.height = h;
                 };
+
+                syncDimensions();
+                video.onloadedmetadata = syncDimensions;
+                video.onresize = syncDimensions;
+
+                if (processInterval) clearInterval(processInterval);
+                processInterval = setInterval(processFrame, 150);
             } catch (err) {
                 console.error("Camera access error:", err);
                 alert("Could not access camera: " + err.message);
@@ -612,8 +628,10 @@ def predict_frame():
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # 1. High sensitivity multi-scale detection
+    # Multi-stage detection using primary and secondary cascades
     faces_detected = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+    if len(faces_detected) == 0 and face_cascade_alt is not None:
+        faces_detected = face_cascade_alt.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
     if len(faces_detected) == 0:
         faces_detected = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=2, minSize=(20, 20))
 
