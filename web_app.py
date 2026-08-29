@@ -1,9 +1,18 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 import cv2
 import numpy as np
-import os
 import sys
 import base64
 import tensorflow as tf
+
+tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
+
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Activation, Dropout, MaxPooling2D, Flatten, Dense
 from flask import Flask, render_template_string, jsonify, request

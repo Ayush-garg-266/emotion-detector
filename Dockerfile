@@ -13,8 +13,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Render dynamically sets PORT environment variable (defaults to 10000)
+# Set environment variables for memory efficiency
 ENV PORT=10000
+ENV TF_CPP_MIN_LOG_LEVEL=3
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV TF_ENABLE_ONEDNN_OPTS=0
+
 EXPOSE 10000
 
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 4 --timeout 120 web_app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 2 --timeout 120 web_app:app"]
