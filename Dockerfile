@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Hugging Face Spaces default port is 7860
-EXPOSE 7860
+# Render injects PORT dynamically (defaults to 10000)
+ENV PORT=10000
+EXPOSE 10000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "2", "--threads", "4", "web_app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 2 --threads 4 web_app:app"]
