@@ -1,3 +1,10 @@
-.idea
-fer2013.csv
-fer2013new.csv
+﻿venv/
+data/
+saved_models/
+plots/
+*.h5
+*.pyc
+__pycache__/
+.kaggle/
+.tmp/
+.pip_cache/

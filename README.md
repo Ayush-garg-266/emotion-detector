@@ -1,3 +1,13 @@
+---
+title: Facial Emotion Recognition
+emoji: 🎭
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+short_description: Real-time deep learning facial emotion recognition web application
+---
+
 # Facial-Emotion-Recognition
 
 

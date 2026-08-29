@@ -1,16 +1,14 @@
-# Two lines that remove tensorflow GPU logs
-# import os
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from keras.optimizers import Adam
-from keras.models import Sequential, model_from_json
-from keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, Activation
-from keras.preprocessing.image import ImageDataGenerator
-from sklearn import model_selection
+import os
 from math import ceil
+from sklearn import model_selection
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Sequential, model_from_json
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, Activation
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 
 # Loads csv files and appends pixels to X and labels to y
@@ -26,9 +24,9 @@ def preprocess_data():
     h = 48
 
     y = np.array(labels[orig_class_names])
-    X = np.zeros((n_samples, w, h, 1))
+    X = np.zeros((n_samples, w, h, 1), dtype=np.float32)
     for i in range(n_samples):
-        X[i] = np.fromstring(data['pixels'][i], dtype=int, sep=' ').reshape((h, w, 1))
+        X[i] = np.fromstring(data['pixels'][i], dtype=np.float32, sep=' ').reshape((h, w, 1))
 
     return X, y
 
@@ -94,9 +92,10 @@ def define_model(input_shape=(48, 48, 1), classes=7):
     num_features = 64
 
     model = Sequential()
+    model.add(Input(shape=input_shape))
 
     # 1st stage
-    model.add(Conv2D(num_features, kernel_size=(3, 3), input_shape=input_shape))
+    model.add(Conv2D(num_features, kernel_size=(3, 3)))
     model.add(BatchNormalization())
     model.add(Activation(activation='relu'))
     model.add(Conv2D(num_features, kernel_size=(3, 3)))
@@ -164,27 +163,27 @@ def plot_acc_loss(history):
 
 
 def save_model_and_weights(model, test_acc):
+    save_dir = 'Saved-Models'
+    os.makedirs(save_dir, exist_ok=True)
     # Serialize and save model to JSON
-    test_acc = int(test_acc * 10000)
+    test_acc_int = int(test_acc * 10000)
     model_json = model.to_json()
-    with open('Saved-Models\\model' + str(test_acc) + '.json', 'w') as json_file:
+    json_path = os.path.join(save_dir, f'model{test_acc_int}.json')
+    with open(json_path, 'w') as json_file:
         json_file.write(model_json)
-    # Serialize and save weights to JSON
-    model.save_weights('Saved-Models\\model' + str(test_acc) + '.h5')
-    print('Model and weights are saved in separate files.')
+    # Serialize and save weights
+    weights_path = os.path.join(save_dir, f'model{test_acc_int}.h5')
+    model.save_weights(weights_path)
+    print(f'Model and weights are saved in {save_dir}.')
 
 
 def load_model_and_weights(model_path, weights_path):
-    # Loading JSON model
-    json_file = open(model_path, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-    model = model_from_json(loaded_model_json)
-
-    # Loading weights
+    # Loading model via define_model architecture
+    model = define_model()
     model.load_weights(weights_path)
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
     print('Model and weights are loaded and compiled.')
+    return model
 
 
 def run_model():
@@ -208,7 +207,7 @@ def run_model():
     # Training model from scratch
     model = define_model(input_shape=x_train[0].shape, classes=len(fer_classes))
     model.summary()
-    model.compile(optimizer=Adam(lr=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
     history = model.fit(datagen.flow(x_train, y_train, batch_size=batch_size), epochs=epochs,
                         steps_per_epoch=len(x_train) // batch_size,
                         validation_data=(x_val, y_val), verbose=2)
@@ -218,4 +217,5 @@ def run_model():
     save_model_and_weights(model, test_acc)
 
 
-run_model()
+if __name__ == '__main__':
+    run_model()
