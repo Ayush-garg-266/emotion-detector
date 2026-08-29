@@ -4,7 +4,7 @@
 
 ---
 
-## 🎥 Demo
+##  Demo
 
 ![Emotion Detection Demo](assets/demo.gif)
 
@@ -12,7 +12,7 @@
 
 ---
 
-## ⚙️ How It Works
+##  How It Works
 
 The system operates via a 5-stage real-time processing pipeline:
 
@@ -46,7 +46,7 @@ The system operates via a 5-stage real-time processing pipeline:
 
 ---
 
-## 🛠️ Tech Stack & Libraries
+##  Tech Stack & Libraries
 
 Each dependency listed in `requirements.txt` serves a specific technical function within the pipeline:
 
@@ -60,7 +60,7 @@ Each dependency listed in `requirements.txt` serves a specific technical functio
 
 ---
 
-## 📊 Dataset & Cleaning
+##  Dataset & Cleaning
 
 The model is trained on the [FER2013 Dataset (Kaggle)](https://www.kaggle.com/c/fer2013) augmented with refined **FERPlus** crowdsourced re-labeling (`fer2013new.csv`).
 
@@ -72,7 +72,7 @@ The model is trained on the [FER2013 Dataset (Kaggle)](https://www.kaggle.com/c/
 
 ---
 
-## 📈 Model Performance
+##  Model Performance
 
 <!-- TODO: Insert evaluate.py metric output, confusion matrix image, and validation curve plots below -->
 
@@ -104,7 +104,7 @@ The model is trained on the [FER2013 Dataset (Kaggle)](https://www.kaggle.com/c/
 
 ---
 
-## ☁️ Architecture & Deployment Considerations
+##  Architecture & Deployment Considerations
 
 ### Why This Desktop Application Is Not Hosted as a Cloud Web Demo
 
@@ -122,7 +122,7 @@ This distinction represents a natural architectural evolution for cloud deployme
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 .
@@ -141,7 +141,7 @@ This distinction represents a natural architectural evolution for cloud deployme
 
 ---
 
-## 🚀 Setup & Usage
+##  Setup & Usage
 
 ### 1. Clone the Repository
 ```powershell
@@ -181,10 +181,16 @@ Open `http://localhost:5000` in your web browser.
 
 ---
 
-## 🔮 Future Improvements
+## Future Improvements
 
 - **Client-Server Cloud Architecture**: Rearchitect into a decoupled WebApp with browser-side `getUserMedia` capture and a FastAPI backend for cloud deployment.
 - **DNN-Based Face Detection**: Replace Haar Cascades with modern deep learning face detectors (e.g., MediaPipe Face Detection, MTCNN, or OpenCV DNN Module) to improve detection accuracy on tilted or partially occluded faces.
 - **Addressing Class Imbalance**: Implement Focal Loss or class-weighted cross-entropy loss functions to boost precision on minority classes (e.g., `Disgust`).
 - **Multi-Face Temporal Tracking**: Incorporate Kalman filtering or DeepSORT for persistent bounding-box tracking across video frames.
 - **Edge Deployment**: Quantize and export the trained model to TensorFlow Lite (`.tflite`) or ONNX formats for low-latency edge device execution.
+
+Author
+
+Built by [Ayush Garg] — Data Science & AI Engineer.
+[www.linkedin.com/in/ayush-garg02]  · [ayush06804@gmail.com]
+
